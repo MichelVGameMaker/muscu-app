@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Muscu Tracker</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <style>
+    :root { --pad: 14px; --radius: 12px; --muted:#666; }
+    html,body { margin:0; padding:0; height:100%; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    header { position:sticky; top:0; background:#fff; padding:10px var(--pad); border-bottom:1px solid #eee; z-index:2; }
+    h1 { font-size:18px; margin:0; }
+    .tabs { display:flex; gap:8px; padding:10px var(--pad); border-bottom:1px solid #f0f0f0; position:sticky; top:48px; background:#fff; z-index:2; }
+    .tab { flex:1; text-align:center; padding:10px; border:1px solid #eee; border-radius:999px; font-size:14px; }
+    .tab.active { border-color:#000; font-weight:600; }
+    main { padding: var(--pad); padding-bottom:80px; }
+    .row { display:flex; gap:8px; }
+    input, select, button, textarea { width:100%; padding:12px; border:1px solid #e5e5e5; border-radius:10px; font-size:16px; box-sizing:border-box; }
+    button.primary { border-color:#000; }
+    .card { border:1px solid #eee; border-radius:var(--radius); padding:12px; margin:8px 0; }
+    .muted { color:var(--muted); font-size:13px; }
+    .pill { font-size:12px; padding:3px 8px; border:1px solid #eee; border-radius:999px; }
+    .list { display:flex; flex-direction:column; gap:8px; }
+    .right { text-align:right; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .grid-3 { display:grid; grid-template-columns: repeat(3,1fr); gap:8px; }
+    .grid-4 { display:grid; grid-template-columns: repeat(4,1fr); gap:8px; }
+    .divider { height:1px; background:#f0f0f0; margin:10px 0; }
+    .hint { font-size:12px; color:var(--muted); }
+    .badge { border:1px solid #eee; padding:4px 6px; border-radius:8px; font-size:12px; }
+    .actions { display:flex; gap:8px; }
+    .nowrap { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    footer { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid #eee; padding:10px var(--pad); display:flex; gap:8px; }
+  </style>
+</head>
+<body>
+  <header><h1>Muscu Tracker</h1></header>
+
+  <nav class="tabs">
+    <div class="tab active" data-tab="library">Bibliothèque</div>
+    <div class="tab" data-tab="plan">Plan</div>
+    <div class="tab" data-tab="session">Séance</div>
+    <div class="tab" data-tab="history">Historique</div>
+  </nav>
+
+  <main>
+    <section id="library" class="view">
+      <div class="card">
+        <div class="grid-2">
+          <input id="exName" placeholder="Nom de l’exercice (ex: Bench Press)" />
+          <select id="exGroup">
+            <option value="">Groupe musculaire…</option>
+            <option>Pectoraux</option><option>Dos</option><option>Epaules</option>
+            <option>Biceps</option><option>Triceps</option><option>Quadriceps</option>
+            <option>Ischios</option><option>Mollets</option><option>Abdos</option>
+          </select>
+        </div>
+        <div class="grid-3" style="margin-top:8px">
+          <input id="exEquipment" placeholder="Matériel (haltères, barre, poulie…)" />
+          <select id="exType">
+            <option value="">Type…</option>
+            <option>Hypertrophie</option><option>Force</option><option>Endurance</option>
+            <option>Mobilité</option>
+          </select>
+          <label class="row" style="align-items:center; gap:6px;">
+            <input type="checkbox" id="exUnilateral" style="width:auto"> Unilatéral
+          </label>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <input id="exNotes" placeholder="Notes (amplitude, tempo, consignes…)" />
+          <button id="addExercise" class="primary" style="width:auto;">Ajouter</button>
+        </div>
+        <div class="hint" style="margin-top:6px;">Astuce: ajoute tes exos une fois, tu les réutilises partout.</div>
+      </div>
+
+      <div class="row" style="margin-top:8px;">
+        <input id="searchExercise" placeholder="Rechercher un exercice…" />
+        <select id="filterGroup" style="width:auto;">
+          <option value="">Tous groupes</option>
+          <option>Pectoraux</option><option>Dos</option><option>Epaules</option>
+          <option>Biceps</option><option>Triceps</option><option>Quadriceps</option>
+          <option>Ischios</option><option>Mollets</option><option>Abdos</option>
+        </select>
+      </div>
+
+      <div id="exerciseList" class="list" style="margin-top:8px;"></div>
+    </section>
+
+    <section id="plan" class="view" hidden>
+      <div class="card">
+        <div class="grid-2">
+          <input id="planDate" type="date" />
+          <input id="planTitle" placeholder="Titre (ex: Haut du corps)" />
+        </div>
+        <div class="grid-4" style="margin-top:8px">
+          <select id="planExercise"></select>
+          <input id="planSets" type="number" inputmode="numeric" placeholder="Séries" />
+          <input id="planReps" type="text" placeholder="Rép (ex: 8-10)" />
+          <input id="planLoad" type="text" placeholder="Charge cible (ex: 60 kg)" />
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button id="addPlanItem" class="primary" style="width:auto;">Ajouter au plan</button>
+          <button id="savePlan" style="width:auto;">Enregistrer le plan</button>
+        </div>
+      </div>
+
+      <div id="planItems" class="list"></div>
+
+      <div class="divider"></div>
+      <h3>Plans à venir</h3>
+      <div id="planList" class="list"></div>
+    </section>
+
+    <section id="session" class="view" hidden>
+      <div class="card">
+        <div class="grid-2">
+          <input id="workoutDate" type="date" />
+          <input id="workoutNote" placeholder="Notes séance (RPE, fatigue…)" />
+        </div>
+        <div class="grid-4" style="margin-top:8px">
+          <select id="logExercise"></select>
+          <input id="logSet" type="number" inputmode="numeric" placeholder="Série #" />
+          <input id="logWeight" type="text" placeholder="Poids (kg)" />
+          <input id="logReps" type="number" inputmode="numeric" placeholder="Rép" />
+        </div>
+        <div class="grid-3" style="margin-top:8px">
+          <input id="logRest" type="text" placeholder="Repos (ex: 90s)" />
+          <input id="logRIR" type="number" inputmode="numeric" placeholder="RIR" />
+          <button id="addLog" class="primary" style="width:auto;">Ajouter</button>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button id="importPlanToday" style="width:auto;">Importer le plan du jour</button>
+          <button id="finishWorkout" style="width:auto;">Terminer & sauver</button>
+        </div>
+      </div>
+
+      <div id="logList" class="list"></div>
+    </section>
+
+    <section id="history" class="view" hidden>
+      <div class="card">
+        <div class="grid-2">
+          <input id="fromDate" type="date" />
+          <input id="toDate" type="date" />
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <select id="historyExercise"></select>
+          <button id="searchHistory" class="primary" style="width:auto;">Chercher</button>
+          <button id="exportCSV" style="width:auto;">Export CSV</button>
+          <button id="exportJSON" style="width:auto;">Export JSON</button>
+        </div>
+      </div>
+      <div id="historyList" class="list"></div>
+    </section>
+  </main>
+
+  <footer>
+    <button id="quickAddSet">+ Série rapide</button>
+    <button id="quickTimer">Minuteur 90s</button>
+    <div class="right" style="flex:1; align-self:center;"><span id="status" class="muted">Offline-ready</span></div>
+  </footer>
+
+  <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(console.error);
+}
+const $ = (id)=>document.getElementById(id);
+const fmtDate = (d)=> new Date(d).toISOString().slice(0,10);
+const today = fmtDate(new Date());
+const DB_NAME='muscu_db', DB_VER=1;
+const STORES = { exercises:'exercises', plans:'plans', workouts:'workouts', logs:'logs' };
+function openDB(){
+  return new Promise((res,rej)=>{
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e=>{
+      const db = req.result;
+      if(!db.objectStoreNames.contains(STORES.exercises)){
+        const s = db.createObjectStore(STORES.exercises,{keyPath:'id', autoIncrement:true});
+        s.createIndex('by_name','name',{unique:false});
+        s.createIndex('by_group','group',{unique:false});
+      }
+      if(!db.objectStoreNames.contains(STORES.plans)){
+        const s = db.createObjectStore(STORES.plans,{keyPath:'id', autoIncrement:true});
+        s.createIndex('by_date','date',{unique:false});
+      }
+      if(!db.objectStoreNames.contains(STORES.workouts)){
+        const s = db.createObjectStore(STORES.workouts,{keyPath:'id', autoIncrement:true});
+        s.createIndex('by_date','date',{unique:false});
+      }
+      if(!db.objectStoreNames.contains(STORES.logs)){
+        const s = db.createObjectStore(STORES.logs,{keyPath:'id', autoIncrement:true});
+        s.createIndex('by_workout','workoutId',{unique:false});
+        s.createIndex('by_exercise','exerciseId',{unique:false});
+        s.createIndex('by_date','date',{unique:false});
+      }
+    };
+    req.onsuccess = ()=>res(req.result);
+    req.onerror = ()=>rej(req.error);
+  });
+}
+function tx(store, mode='readonly'){ return openDB().then(db=>db.transaction(store, mode).objectStore(store)); }
+function add(store, val){ return new Promise(async (res,rej)=>{ const s=await tx(store,'readwrite'); const r=s.add(val); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function put(store, val){ return new Promise(async (res,rej)=>{ const s=await tx(store,'readwrite'); const r=s.put(val); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function del(store, key){ return new Promise(async (res,rej)=>{ const s=await tx(store,'readwrite'); const r=s.delete(key); r.onsuccess=()=>res(true); r.onerror=()=>rej(r.error); }); }
+function getAll(store, idx=null, query=null){
+  return new Promise(async (res,rej)=>{
+    const s=await tx(store);
+    const source = idx? s.index(idx): s;
+    const r = source.getAll(query);
+    r.onsuccess=()=>res(r.result||[]);
+    r.onerror=()=>rej(r.error);
+  });
+}
+let planDraft = { date: today, title:'', items:[] };
+let logDraft = { date: today, note:'', items:[] };
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const id = t.dataset.tab;
+    document.querySelectorAll('.view').forEach(v=>v.hidden=true);
+    $(id).hidden=false;
+    if(id==='plan') refreshPlanSelect();
+    if(id==='session') refreshLogSelect();
+    if(id==='history') refreshHistorySelect();
+  };
+});
+$('exName').value='';
+$('planDate').value=today; $('workoutDate').value=today;
+$('addExercise').onclick = async ()=>{
+  const ex = {
+    name: $('exName').value.trim(),
+    group: $('exGroup').value,
+    equipment: $('exEquipment').value.trim(),
+    type: $('exType').value,
+    unilateral: $('exUnilateral').checked,
+    notes: $('exNotes').value.trim(),
+    createdAt: Date.now()
+  };
+  if(!ex.name){ alert('Nom requis'); return; }
+  await add(STORES.exercises, ex);
+  $('exName').value=''; $('exEquipment').value=''; $('exNotes').value=''; $('exUnilateral').checked=false;
+  renderExercises();
+  refreshPlanSelect(); refreshLogSelect(); refreshHistorySelect();
+};
+$('searchExercise').oninput = renderExercises;
+$('filterGroup').onchange = renderExercises;
+async function renderExercises(){
+  const q = $('searchExercise').value.toLowerCase();
+  const g = $('filterGroup').value;
+  const list = await getAll(STORES.exercises);
+  const filtered = list.filter(e=>{
+    const matchQ = !q || (e.name.toLowerCase().includes(q) || (e.equipment||'').toLowerCase().includes(q));
+    const matchG = !g || e.group===g;
+    return matchQ && matchG;
+  }).sort((a,b)=>a.name.localeCompare(b.name));
+  const el = $('exerciseList'); el.innerHTML='';
+  if(filtered.length===0){ el.innerHTML = '<div class="muted">Aucun exercice pour le moment.</div>'; return; }
+  filtered.forEach(e=>{
+    const card = document.createElement('div');
+    card.className='card';
+    card.innerHTML = `
+      <div class="row" style="justify-content:space-between; align-items:center;">
+        <div style="flex:1; min-width:0;">
+          <div class="nowrap"><strong>${e.name}</strong></div>
+          <div class="muted">${e.group||'—'} • ${e.equipment||'—'} ${e.unilateral? '• Uni':''}</div>
+          ${e.notes? `<div class="hint">${e.notes}</div>`:''}
+        </div>
+        <div class="actions">
+          <button data-edit="${e.id}">✏️</button>
+          <button data-del="${e.id}">🗑️</button>
+        </div>
+      </div>`;
+    el.appendChild(card);
+    card.querySelector(`[data-del="${e.id}"]`).onclick = async ()=>{
+      if(confirm('Supprimer cet exercice ?')){ await del(STORES.exercises, e.id); renderExercises(); refreshPlanSelect(); refreshLogSelect(); refreshHistorySelect(); }
+    };
+    card.querySelector(`[data-edit="${e.id}"]`).onclick = async ()=>{
+      const name = prompt('Nom', e.name); if(!name) return;
+      const group = prompt('Groupe (ex: Pectoraux)', e.group||'');
+      const equipment = prompt('Matériel', e.equipment||'');
+      const type = prompt('Type (Hypertrophie/Force/…)', e.type||'');
+      const notes = prompt('Notes', e.notes||'');
+      await put(STORES.exercises, {...e, name, group, equipment, type, notes});
+      renderExercises(); refreshPlanSelect(); refreshLogSelect(); refreshHistorySelect();
+    };
+  });
+}
+function refreshPlanSelect(){
+  getAll(STORES.exercises).then(xs=>{
+    const sel = $('planExercise'); sel.innerHTML='<option value="">Exercice…</option>';
+    xs.sort((a,b)=>a.name.localeCompare(b.name)).forEach(e=>{
+      const o=document.createElement('option'); o.value=String(e.id); o.textContent=e.name; sel.appendChild(o);
+    });
+  });
+}
+$('planDate').onchange = e=> planDraft.date = e.target.value;
+$('planTitle').oninput = e=> planDraft.title = e.target.value;
+$('addPlanItem').onclick = ()=>{
+  const exId = Number($('planExercise').value);
+  if(!exId) return alert('Choisis un exercice');
+  const exName = $('planExercise').selectedOptions[0].textContent;
+  const sets = Number($('planSets').value||0);
+  const reps = $('planReps').value.trim();
+  const load = $('planLoad').value.trim();
+  planDraft.items.push({ exId, exName, sets, reps, load });
+  $('planSets').value=''; $('planReps').value=''; $('planLoad').value='';
+  renderPlanDraft();
+};
+function renderPlanDraft(){
+  const wrap = $('planItems'); wrap.innerHTML='';
+  if(planDraft.items.length===0){ wrap.innerHTML='<div class="muted">Aucun exercice planifié.</div>'; return; }
+  planDraft.items.forEach((it, idx)=>{
+    const d = document.createElement('div');
+    d.className='card';
+    d.innerHTML = `<div class="row" style="justify-content:space-between;">
+      <div><strong>${it.exName}</strong><div class="muted">${it.sets||'—'} x ${it.reps||'—'} • ${it.load||'—'}</div></div>
+      <button data-rm="${idx}">Retirer</button>
+    </div>`;
+    wrap.appendChild(d);
+    d.querySelector(`[data-rm="${idx}"]`).onclick=()=>{
+      planDraft.items.splice(idx,1); renderPlanDraft();
+    };
+  });
+}
+$('savePlan').onclick = async ()=>{
+  planDraft.date = $('planDate').value || today;
+  await add(STORES.plans, { ...planDraft, createdAt: Date.now() });
+  planDraft = { date: today, title:'', items:[] };
+  $('planTitle').value=''; renderPlanDraft(); renderPlans();
+};
+async function renderPlans(){
+  const plans = (await getAll(STORES.plans)).sort((a,b)=> (a.date||'').localeCompare(b.date));
+  const wrap = $('planList'); wrap.innerHTML='';
+  if(plans.length===0){ wrap.innerHTML='<div class="muted">Aucun plan sauvegardé.</div>'; return; }
+  plans.forEach(p=>{
+    const div = document.createElement('div');
+    div.className='card';
+    const lines = p.items.map(i=>`• ${i.exName}: ${i.sets||'—'}×${i.reps||'—'} @ ${i.load||'—'}`).join('<br>');
+    div.innerHTML = `
+      <div class="row" style="justify-content:space-between; align-items:flex-start;">
+        <div>
+          <strong>${p.title||'Plan'}</strong> <span class="pill">${p.date||'—'}</span><br>
+          <span class="muted">${p.items.length} exos</span>
+          <div class="hint" style="margin-top:6px">${lines}</div>
+        </div>
+        <div class="actions">
+          <button data-use="${p.id}">▶️ Utiliser</button>
+          <button data-delp="${p.id}">🗑️</button>
+        </div>
+      </div>`;
+    wrap.appendChild(div);
+    div.querySelector(`[data-use="${p.id}"]`).onclick = ()=> importPlanIntoLog(p);
+    div.querySelector(`[data-delp="${p.id}"]`).onclick = async ()=>{ if(confirm('Supprimer ce plan ?')){ await del(STORES.plans, p.id); renderPlans(); } };
+  });
+}
+function refreshLogSelect(){
+  getAll(STORES.exercises).then(xs=>{
+    const sel = $('logExercise'); sel.innerHTML='<option value="">Exercice…</option>';
+    xs.sort((a,b)=>a.name.localeCompare(b.name)).forEach(e=>{
+      const o=document.createElement('option'); o.value=String(e.id); o.textContent=e.name; sel.appendChild(o);
+    });
+  });
+  renderLogDraft();
+}
+$('workoutDate').onchange = e=> logDraft.date = e.target.value;
+$('workoutNote').oninput = e=> logDraft.note = e.target.value;
+$('addLog').onclick = ()=>{
+  const exerciseId = Number($('logExercise').value);
+  if(!exerciseId) return alert('Choisis un exercice');
+  const exerciseName = $('logExercise').selectedOptions[0].textContent;
+  const setIndex = Number($('logSet').value||1);
+  const weight = $('logWeight').value.trim();
+  const reps = Number($('logReps').value||0);
+  const rest = $('logRest').value.trim();
+  const rir = $('logRIR').value ? Number($('logRIR').value) : null;
+  logDraft.items.push({ exerciseId, exerciseName, setIndex, weight, reps, rest, rir });
+  $('logSet').value=''; $('logWeight').value=''; $('logReps').value=''; $('logRest').value=''; $('logRIR').value='';
+  renderLogDraft();
+};
+function renderLogDraft(){
+  const wrap = $('logList'); wrap.innerHTML='';
+  if(logDraft.items.length===0){ wrap.innerHTML='<div class="muted">Aucune série ajoutée.</div>'; return; }
+  const byEx = {};
+  logDraft.items.forEach(s=>{ (byEx[s.exerciseName]=byEx[s.exerciseName]||[]).push(s); });
+  Object.entries(byEx).forEach(([name,sets])=>{
+    const c=document.createElement('div'); c.className='card';
+    const lines = sets.sort((a,b)=>a.setIndex-b.setIndex).map(s=>{
+      const rir = (s.rir===null || s.rir===undefined) ? '' : ` • RIR ${s.rir}`;
+      return `<div>• S${s.setIndex}: ${s.weight||'—'} × ${s.reps||'—'} ${s.rest? '• '+s.rest:''}${rir}</div>`;
+    }).join('');
+    c.innerHTML = `<div class="row" style="justify-content:space-between;">
+      <div><strong>${name}</strong><div class="hint">${lines}</div></div>
+      <button class="badge" data-clear="${name}">Effacer</button>
+    </div>`;
+    wrap.appendChild(c);
+    c.querySelector(`[data-clear="${name}"]`).onclick=()=>{
+      logDraft.items = logDraft.items.filter(s=>s.exerciseName!==name);
+      renderLogDraft();
+    };
+  });
+}
+async function importPlanIntoLog(plan){
+  logDraft.date = $('workoutDate').value || today;
+  plan.items.forEach((i, idx)=>{
+    for(let s=1; s<= (i.sets || 1); s++){
+      logDraft.items.push({ exerciseId:i.exId, exerciseName:i.exName, setIndex:s, weight:i.load||'', reps: Number((i.reps||'').split('-')[0])||0, rest:'', rir:null });
+    }
+  });
+  renderLogDraft();
+  document.querySelector('[data-tab="session"]').click();
+}
+$('importPlanToday').onclick = async ()=>{
+  const d = $('workoutDate').value || today;
+  const plans = await getAll(STORES.plans);
+  const p = plans.find(x=>x.date===d);
+  if(!p){ alert('Aucun plan à cette date'); return; }
+  importPlanIntoLog(p);
+};
+$('finishWorkout').onclick = async ()=>{
+  const workoutId = await add(STORES.workouts, { date: $('workoutDate').value || today, note: $('workoutNote').value.trim(), createdAt: Date.now() });
+  for(const s of logDraft.items){
+    await add(STORES.logs, { ...s, date: $('workoutDate').value || today, workoutId });
+  }
+  logDraft = { date: today, note:'', items:[] };
+  $('workoutNote').value=''; renderLogDraft();
+  alert('Séance sauvegardée ✅');
+};
+function refreshHistorySelect(){
+  getAll(STORES.exercises).then(xs=>{
+    const sel = $('historyExercise'); sel.innerHTML='<option value="">Tous exercices</option>';
+    xs.sort((a,b)=>a.name.localeCompare(b.name)).forEach(e=>{
+      const o=document.createElement('option'); o.value=String(e.id); o.textContent=e.name; sel.appendChild(o);
+    });
+  });
+}
+$('searchHistory').onclick = async ()=>{
+  const from = $('fromDate').value ? new Date($('fromDate').value) : new Date('1970-01-01');
+  const to = $('toDate').value ? new Date($('toDate').value+'T23:59:59') : new Date('2999-12-31');
+  const exId = $('historyExercise').value ? Number($('historyExercise').value) : null;
+  const logs = (await getAll(STORES.logs)).filter(l=>{
+    const d = new Date(l.date);
+    return d>=from && d<=to && (!exId || l.exerciseId===exId);
+  }).sort((a,b)=> (a.date+b.exerciseName+a.setIndex).localeCompare(b.date+b.exerciseName+b.setIndex));
+  const out = $('historyList'); out.innerHTML='';
+  if(logs.length===0){ out.innerHTML='<div class="muted">Aucun résultat.</div>'; return; }
+  const groups = {};
+  logs.forEach(l=>{
+    const key = `${l.date}::${l.exerciseName}`; (groups[key]=groups[key]||[]).push(l);
+  });
+  Object.entries(groups).forEach(([key,arr])=>{
+    const [d,name] = key.split('::');
+    const div = document.createElement('div');
+    div.className='card';
+    const lines = arr.sort((a,b)=>a.setIndex-b.setIndex).map(s=>`S${s.setIndex}: ${s.weight||'—'} × ${s.reps||'—'} ${s.rest? '• '+s.rest:''} ${s.rir!=null? '• RIR '+s.rir:''}`).join('<br>');
+    div.innerHTML = `<strong>${d}</strong> • ${name}<div class="hint" style="margin-top:6px">${lines}</div>`;
+    out.appendChild(div);
+  });
+};
+$('exportCSV').onclick = async ()=>{
+  const logs = await getAll(STORES.logs);
+  const rows = [['date','exercise','set','weight','reps','rest','rir','workoutId']];
+  logs.forEach(l=> rows.push([l.date,l.exerciseName,l.setIndex,l.weight,l.reps,l.rest??'', (l.rir??''), l.workoutId]));
+  const csv = rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`muscu_logs_${today}.csv`; document.body.appendChild(a); a.click(); a.remove();
+};
+$('exportJSON').onclick = async ()=>{
+  const data = {
+    exercises: await getAll(STORES.exercises),
+    plans: await getAll(STORES.plans),
+    workouts: await getAll(STORES.workouts),
+    logs: await getAll(STORES.logs)
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`muscu_backup_${today}.json`; document.body.appendChild(a); a.click(); a.remove();
+};
+$('quickAddSet').onclick = ()=>{
+  document.querySelector('[data-tab="session"]').click();
+  if(!$('logExercise').value){ alert('Choisis un exercice'); return; }
+  $('logSet').value = String(Number($('logSet').value||0)+1);
+};
+$('quickTimer').onclick = ()=>{
+  let left = 90; $('status').textContent = `Repos ${left}s`;
+  const iv = setInterval(()=>{
+    left--; $('status').textContent = left>0 ? `Repos ${left}s` : 'OK';
+    if(left<=0) clearInterval(iv);
+  },1000);
+};
+(async function init(){
+  await openDB();
+  const exos = await getAll(STORES.exercises);
+  if(exos.length===0){
+    for(const e of [
+      {name:'Dev Couché Barre',group:'Pectoraux',equipment:'Barre',type:'Hypertrophie'},
+      {name:'Rowing Haltères',group:'Dos',equipment:'Haltères',type:'Hypertrophie'},
+      {name:'Élévations Latérales',group:'Epaules',equipment:'Haltères',type:'Hypertrophie',notes:'Contrôle, 2s en haut'},
+      {name:'Curl Marteau',group:'Biceps',equipment:'Haltères',type:'Hypertrophie',unilateral:true},
+      {name:'Presse à Cuisses',group:'Quadriceps',equipment:'Machine',type:'Force'}
+    ]) await add(STORES.exercises, {...e, unilateral:!!e.unilateral, notes:e.notes||'', createdAt:Date.now()});
+  }
+  renderExercises(); renderPlans(); refreshPlanSelect(); refreshLogSelect(); refreshHistorySelect();
+})();
+  </script>
+</body>
+</html>
